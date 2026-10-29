@@ -7,32 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Firebase SDKs & Configuration -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // Konfigurasi Firebase Anda
-    const firebaseConfig = {
-      apiKey: "AIzaSyA-dDdJloA60ROc47KsIbSd2yhkRpHOv5g",
-      authDomain: "nazarku.firebaseapp.com",
-      projectId: "nazarku",
-      storageBucket: "nazarku.firebasestorage.app",
-      messagingSenderId: "399713237412",
-      appId: "1:399713237412:web:c049b38ef9fdd0ce98a931",
-      measurementId: "G-N6NQJD526P"
-    };
-
-    // Inisialisasi Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // Ekspos ke global scope agar dapat diakses fungsi aplikasi
-    window.db = db;
-    window.docRef = doc(db, "tracker", "nazar_data");
-    window.loadFromFirebase();
-  </script>
 
   <script>
     tailwind.config = {
@@ -65,7 +39,7 @@
   </script>
   <style>
     .gold-gradient {
-      background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+      background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #d97706 100%) !important;
     }
     .bg-pattern {
       background-color: #0a2e19;
@@ -262,51 +236,6 @@
       return data;
     }
 
-    // Fungsi load data dari Firestore
-    async function loadFromFirebase() {
-      try {
-        const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        const docSnap = await getDoc(window.docRef);
-        if (docSnap.exists()) {
-          appData = docSnap.data();
-        } else {
-          appData = createEmptyData();
-          await saveDataToFirebase();
-        }
-        
-        SHOLAT_KEYS.forEach(key => {
-          if (!appData[key] || !Array.isArray(appData[key]) || appData[key].length !== 120) {
-            appData[key] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
-          }
-        });
-
-        document.getElementById('sync-status').innerText = 'Data tersinkron dengan Firebase';
-        render();
-      } catch (e) {
-        console.error("Gagal memuat data:", e);
-        document.getElementById('sync-status').innerText = 'Gagal sinkronisasi ke Firebase';
-        render();
-      }
-    }
-
-    // Fungsi simpan data ke Firestore
-    async function saveDataToFirebase() {
-      try {
-        const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        document.getElementById('sync-status').innerText = 'Menyimpan...';
-        await setDoc(window.docRef, appData);
-        document.getElementById('sync-status').innerText = 'Tersinkron dengan Firebase';
-      } catch (e) {
-        console.error("Gagal menyimpan:", e);
-        document.getElementById('sync-status').innerText = 'Gagal menyimpan ke Firebase';
-      }
-      render();
-    }
-
-    function saveData() {
-      saveDataToFirebase();
-    }
-
     function handleNumberClick(index) {
       const item = appData[activeTab][index];
       if (!item.done) {
@@ -408,12 +337,12 @@
           <button onclick="switchTab('${key}')" 
             class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all ${
               isActive 
-                ? 'bg-amber-400 text-islamic-dark font-bold shadow-lg scale-105' 
+                ? 'bg-amber-400 text-black font-bold shadow-lg scale-105' 
                 : 'bg-emerald-950/70 text-emerald-200 hover:bg-emerald-900 border border-emerald-800/50'
             }">
             <i class="fa-solid ${SHOLAT_NAMES[key].icon}"></i>
             <span class="capitalize">${key}</span>
-            <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-islamic-dark text-amber-300' : 'bg-emerald-900 text-emerald-300'}">
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-black text-amber-300' : 'bg-emerald-900 text-emerald-300'}">
               ${completed}/120
             </span>
           </button>
@@ -431,12 +360,11 @@
           <button onclick="handleNumberClick(${idx})" title="${item.done ? 'Selesai: ' + item.timestamp : 'Klik untuk tandai'}"
             class="aspect-square rounded-lg font-bold text-xs flex flex-col items-center justify-center transition-all relative ${
               item.done 
-                ? 'gold-gradient text-islamic-dark shadow-md ring-2 ring-amber-300/50 scale-95' 
+                ? 'bg-amber-400 text-slate-950 shadow-lg ring-2 ring-amber-300 scale-95 font-black' 
                 : 'bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-800/50 hover:text-white'
             }">
             <span>${num}</span>
-            ${item.done ? '<i class="fa-solid fa-check text-[9px] -mt-0.5"></i>' : ''}
-            ${item.done ? '<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-900"></span>' : ''}
+            ${item.done ? '<i class="fa-solid fa-check text-[10px] text-slate-950 font-extrabold -mt-0.5"></i>' : ''}
           </button>
         `;
       }).join('');
@@ -538,6 +466,76 @@
       }
       input.click();
     }
+
+    // Render tampilan awal terlebih dahulu
+    render();
+  </script>
+
+  <!-- Firebase SDKs & Integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA-dDdJloA60ROc47KsIbSd2yhkRpHOv5g",
+      authDomain: "nazarku.firebaseapp.com",
+      projectId: "nazarku",
+      storageBucket: "nazarku.firebasestorage.app",
+      messagingSenderId: "399713237412",
+      appId: "1:399713237412:web:c049b38ef9fdd0ce98a931",
+      measurementId: "G-N6NQJD526P"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const docRef = doc(db, "tracker", "nazar_data");
+
+    window.saveDataToFirebase = async function() {
+      try {
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.innerText = 'Menyimpan...';
+        await setDoc(docRef, appData);
+        if (statusEl) statusEl.innerText = 'Tersinkron dengan Firebase';
+      } catch (e) {
+        console.error("Gagal menyimpan:", e);
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.innerText = 'Gagal menyimpan ke Firebase';
+      }
+      render();
+    };
+
+    window.saveData = function() {
+      window.saveDataToFirebase();
+    };
+
+    async function loadFromFirebase() {
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          appData = docSnap.data();
+        } else {
+          appData = createEmptyData();
+          await window.saveDataToFirebase();
+        }
+        
+        SHOLAT_KEYS.forEach(key => {
+          if (!appData[key] || !Array.isArray(appData[key]) || appData[key].length !== 120) {
+            appData[key] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
+          }
+        });
+
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.innerText = 'Data tersinkron dengan Firebase';
+        render();
+      } catch (e) {
+        console.error("Gagal memuat data:", e);
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.innerText = 'Gagal sinkronisasi ke Firebase';
+        render();
+      }
+    }
+
+    loadFromFirebase();
   </script>
 </body>
 </html>
