@@ -173,7 +173,7 @@
 
     <!-- Global Actions / Backup -->
     <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-emerald-800/40 text-xs text-emerald-400">
-      <div id="sync-status" class="text-amber-400">Menyinkronkan dengan Firebase...</div>
+      <div id="sync-status" class="text-amber-400">Memuat aplikasi...</div>
       <div class="flex gap-2">
         <button onclick="exportData()" class="hover:text-amber-300 underline">Backup Data (JSON)</button>
         <span>•</span>
@@ -215,16 +215,16 @@
     };
 
     let activeTab = 'subuh';
-    let appData = createEmptyData();
 
-    // Pastikan saveData terdefinisi secara global
-    window.saveData = function() {
-      if (window.saveDataToFirebase) {
-        window.saveDataToFirebase();
-      } else {
-        render();
-      }
-    };
+    function createEmptyData() {
+      const data = {};
+      SHOLAT_KEYS.forEach(k => {
+        data[k] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
+      });
+      return data;
+    }
+
+    let appData = createEmptyData();
 
     function getFormattedNow() {
       const now = new Date();
@@ -237,61 +237,35 @@
       }).replace(/\./g, ':');
     }
 
-    function createEmptyData() {
-      const data = {};
-      SHOLAT_KEYS.forEach(k => {
-        data[k] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
-      });
-      return data;
-    }
+    window.saveAppData = function() {
+      localStorage.setItem('nazar_baqarah_local', JSON.stringify(appData));
+      render();
+      
+      if (typeof window.saveToFirebaseRTDB === 'function') {
+        window.saveToFirebaseRTDB();
+      }
+    };
 
-    function handleNumberClick(index) {
+    window.handleNumberClick = function(index) {
       const item = appData[activeTab][index];
       if (!item.done) {
         appData[activeTab][index] = {
           done: true,
           timestamp: getFormattedNow()
         };
-        window.saveData();
       } else {
         openModal(index);
+        return;
       }
-    }
+      window.saveAppData();
+    };
 
-    function openModal(index) {
-      const item = appData[activeTab][index];
-      const modal = document.getElementById('detail-modal');
-      const title = document.getElementById('modal-title');
-      const content = document.getElementById('modal-content');
-      const deleteBtn = document.getElementById('modal-delete-btn');
-
-      title.innerText = `Nomor ${index + 1} - ${activeTab.toUpperCase()}`;
-      content.innerHTML = `
-        <div class="bg-emerald-900/50 p-3 rounded-lg border border-emerald-800 space-y-1">
-          <div class="text-xs text-emerald-400">Waktu Penyelesaian:</div>
-          <div class="text-base font-bold text-amber-300"><i class="fa-regular fa-clock mr-1"></i> ${item.timestamp || '-'}</div>
-        </div>
-      `;
-
-      deleteBtn.onclick = () => {
-        appData[activeTab][index] = { done: false, timestamp: null };
-        window.saveData();
-        closeModal();
-      };
-
-      modal.classList.remove('hidden');
-    }
-
-    function closeModal() {
-      document.getElementById('detail-modal').classList.add('hidden');
-    }
-
-    function switchTab(tab) {
+    window.switchTab = function(tab) {
       activeTab = tab;
       render();
-    }
+    };
 
-    function addOneToCurrent() {
+    window.addOneToCurrent = function() {
       const list = appData[activeTab];
       const firstUnchecked = list.findIndex(item => !item.done);
       if (firstUnchecked !== -1) {
@@ -299,13 +273,13 @@
           done: true,
           timestamp: getFormattedNow()
         };
-        window.saveData();
+        window.saveAppData();
       } else {
         alert(`Target 120 kali untuk sholat ${activeTab.toUpperCase()} sudah lengkap!`);
       }
-    }
+    };
 
-    function promptBulkSet() {
+    window.promptBulkSet = function() {
       const currentCompleted = appData[activeTab].filter(i => i.done).length;
       const input = prompt(`Masukkan jumlah nomor yang SUDAH selesai dibaca untuk Sholat ${activeTab.toUpperCase()} (1 - 120):`, currentCompleted);
       
@@ -322,19 +296,81 @@
               appData[activeTab][i] = { done: false, timestamp: null };
             }
           }
-          window.saveData();
+          window.saveAppData();
         } else {
           alert("Harap masukkan angka antara 0 sampai 120.");
         }
       }
-    }
+    };
 
-    function resetCurrentSholat() {
+    window.resetCurrentSholat = function() {
       if (confirm(`Apakah Anda yakin ingin mengosongkan semua catatan untuk waktu ${activeTab.toUpperCase()}?`)) {
         appData[activeTab] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
-        window.saveData();
+        window.saveAppData();
       }
-    }
+    };
+
+    window.openModal = function(index) {
+      const item = appData[activeTab][index];
+      const modal = document.getElementById('detail-modal');
+      const title = document.getElementById('modal-title');
+      const content = document.getElementById('modal-content');
+      const deleteBtn = document.getElementById('modal-delete-btn');
+
+      title.innerText = `Nomor ${index + 1} - ${activeTab.toUpperCase()}`;
+      content.innerHTML = `
+        <div class="bg-emerald-900/50 p-3 rounded-lg border border-emerald-800 space-y-1">
+          <div class="text-xs text-emerald-400">Waktu Penyelesaian:</div>
+          <div class="text-base font-bold text-amber-300"><i class="fa-regular fa-clock mr-1"></i> ${item.timestamp || '-'}</div>
+        </div>
+      `;
+
+      deleteBtn.onclick = () => {
+        appData[activeTab][index] = { done: false, timestamp: null };
+        window.saveAppData();
+        closeModal();
+      };
+
+      modal.classList.remove('hidden');
+    };
+
+    window.closeModal = function() {
+      document.getElementById('detail-modal').classList.add('hidden');
+    };
+
+    window.exportData = function() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `nazar_baqarah_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    };
+
+    window.importData = function() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          try {
+            const content = JSON.parse(readerEvent.target.result);
+            if (content && typeof content === 'object') {
+              appData = content;
+              window.saveAppData();
+              alert('Data berhasil diimpor!');
+            }
+          } catch(err) {
+            alert('File JSON tidak valid.');
+          }
+        }
+      }
+      input.click();
+    };
 
     function renderTabs() {
       const container = document.getElementById('sholat-tabs');
@@ -442,52 +478,24 @@
       renderHeaderAndProgress();
     }
 
-    function exportData() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `nazar_baqarah_backup_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+    const localSaved = localStorage.getItem('nazar_baqarah_local');
+    if (localSaved) {
+      try {
+        appData = JSON.parse(localSaved);
+      } catch(e) {}
     }
-
-    function importData() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'application/json';
-      input.onchange = e => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.readAsText(file,'UTF-8');
-        reader.onload = readerEvent => {
-          try {
-            const content = JSON.parse(readerEvent.target.result);
-            if (content && typeof content === 'object') {
-              appData = content;
-              window.saveData();
-              alert('Data berhasil diimpor!');
-            }
-          } catch(err) {
-            alert('File JSON tidak valid.');
-          }
-        }
-      }
-      input.click();
-    }
-
-    // Render tampilan awal
     render();
   </script>
 
-  <!-- Firebase SDKs & Integration -->
+  <!-- Firebase Realtime Database SDKs & Integration -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA-dDdJloA60ROc47KsIbSd2yhkRpHOv5g",
       authDomain: "nazarku.firebaseapp.com",
+      databaseURL: "https://nazarku-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "nazarku",
       storageBucket: "nazarku.firebasestorage.app",
       messagingSenderId: "399713237412",
@@ -496,31 +504,33 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const docRef = doc(db, "tracker", "nazar_data");
+    const db = getDatabase(app);
+    const dbRef = ref(db, 'nazar_data');
 
-    window.saveDataToFirebase = async function() {
+    window.saveToFirebaseRTDB = async function() {
       try {
         const statusEl = document.getElementById('sync-status');
-        if (statusEl) statusEl.innerText = 'Menyimpan...';
-        await setDoc(docRef, appData);
+        if (statusEl) statusEl.innerText = 'Menyimpan ke Realtime DB...';
+        await set(dbRef, appData);
         if (statusEl) statusEl.innerText = 'Tersinkron dengan Firebase';
       } catch (e) {
         console.error("Gagal menyimpan:", e);
         const statusEl = document.getElementById('sync-status');
-        if (statusEl) statusEl.innerText = 'Gagal menyimpan ke Firebase';
+        if (statusEl) statusEl.innerText = 'Mode Offline (Tersimpan Lokal)';
       }
-      render();
     };
 
-    async function loadFromFirebase() {
+    async function loadFromFirebaseRTDB() {
       try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          appData = docSnap.data();
+        const statusEl = document.getElementById('sync-status');
+        if (statusEl) statusEl.innerText = 'Menghubungkan ke Realtime DB...';
+        
+        const snapshot = await get(dbRef);
+        if (snapshot.exists()) {
+          appData = snapshot.val();
         } else {
           appData = createEmptyData();
-          await window.saveDataToFirebase();
+          await window.saveToFirebaseRTDB();
         }
         
         SHOLAT_KEYS.forEach(key => {
@@ -529,18 +539,17 @@
           }
         });
 
-        const statusEl = document.getElementById('sync-status');
         if (statusEl) statusEl.innerText = 'Data tersinkron dengan Firebase';
         render();
       } catch (e) {
-        console.error("Gagal memuat data:", e);
+        console.error("Gagal memuat:", e);
         const statusEl = document.getElementById('sync-status');
-        if (statusEl) statusEl.innerText = 'Gagal sinkronisasi ke Firebase';
+        if (statusEl) statusEl.innerText = 'Gagal sinkron, menggunakan data lokal';
         render();
       }
     }
 
-    loadFromFirebase();
+    loadFromFirebaseRTDB();
   </script>
 </body>
 </html>
