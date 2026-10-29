@@ -217,6 +217,15 @@
     let activeTab = 'subuh';
     let appData = createEmptyData();
 
+    // Pastikan saveData terdefinisi secara global
+    window.saveData = function() {
+      if (window.saveDataToFirebase) {
+        window.saveDataToFirebase();
+      } else {
+        render();
+      }
+    };
+
     function getFormattedNow() {
       const now = new Date();
       return now.toLocaleString('id-ID', {
@@ -243,7 +252,7 @@
           done: true,
           timestamp: getFormattedNow()
         };
-        saveData();
+        window.saveData();
       } else {
         openModal(index);
       }
@@ -266,7 +275,7 @@
 
       deleteBtn.onclick = () => {
         appData[activeTab][index] = { done: false, timestamp: null };
-        saveData();
+        window.saveData();
         closeModal();
       };
 
@@ -290,7 +299,7 @@
           done: true,
           timestamp: getFormattedNow()
         };
-        saveData();
+        window.saveData();
       } else {
         alert(`Target 120 kali untuk sholat ${activeTab.toUpperCase()} sudah lengkap!`);
       }
@@ -313,7 +322,7 @@
               appData[activeTab][i] = { done: false, timestamp: null };
             }
           }
-          saveData();
+          window.saveData();
         } else {
           alert("Harap masukkan angka antara 0 sampai 120.");
         }
@@ -323,7 +332,7 @@
     function resetCurrentSholat() {
       if (confirm(`Apakah Anda yakin ingin mengosongkan semua catatan untuk waktu ${activeTab.toUpperCase()}?`)) {
         appData[activeTab] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
-        saveData();
+        window.saveData();
       }
     }
 
@@ -456,7 +465,7 @@
             const content = JSON.parse(readerEvent.target.result);
             if (content && typeof content === 'object') {
               appData = content;
-              saveData();
+              window.saveData();
               alert('Data berhasil diimpor!');
             }
           } catch(err) {
@@ -467,7 +476,7 @@
       input.click();
     }
 
-    // Render tampilan awal terlebih dahulu
+    // Render tampilan awal
     render();
   </script>
 
@@ -502,10 +511,6 @@
         if (statusEl) statusEl.innerText = 'Gagal menyimpan ke Firebase';
       }
       render();
-    };
-
-    window.saveData = function() {
-      window.saveDataToFirebase();
     };
 
     async function loadFromFirebase() {
