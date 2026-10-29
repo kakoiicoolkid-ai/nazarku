@@ -65,8 +65,15 @@
           <p class="text-xs text-emerald-400">Target 120 Kali per Waktu Sholat</p>
         </div>
       </div>
-      <div class="font-quran text-amber-300 text-lg sm:text-right">
-        بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+      
+      <div class="flex items-center gap-4">
+        <div class="font-quran text-amber-300 text-lg sm:text-right hidden sm:block">
+          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+        </div>
+        <!-- Tombol Status Login / Logout -->
+        <div id="auth-header-btn">
+          <!-- Render via JS -->
+        </div>
       </div>
     </div>
   </header>
@@ -204,7 +211,105 @@
     </div>
   </div>
 
+  <!-- Modal Login -->
+  <div id="login-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-emerald-950 border border-amber-500/40 rounded-2xl p-6 max-w-sm w-full space-y-5 shadow-2xl relative">
+      <div class="text-center space-y-2">
+        <div class="w-12 h-12 mx-auto rounded-full gold-gradient p-0.5 flex items-center justify-center shadow-lg">
+          <div class="w-full h-full bg-islamic-900 rounded-full flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-lock text-xl"></i>
+          </div>
+        </div>
+        <h3 class="font-bold text-amber-300 text-xl">Login Pengguna</h3>
+        <p class="text-xs text-emerald-300">Masukkan akun untuk mengakses tracker nazar</p>
+      </div>
+
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs text-emerald-300 font-medium mb-1">Username</label>
+          <input type="text" id="login-username" required autocomplete="off"
+            class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-400 placeholder-emerald-600 transition"
+            placeholder="Masukkan username">
+        </div>
+
+        <div>
+          <label class="block text-xs text-emerald-300 font-medium mb-1">Password</label>
+          <input type="password" id="login-password" required
+            class="w-full bg-emerald-900/60 border border-emerald-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-amber-400 placeholder-emerald-600 transition"
+            placeholder="Masukkan password">
+        </div>
+
+        <div id="login-error" class="text-red-400 text-xs font-semibold text-center hidden">
+          Username atau password salah!
+        </div>
+
+        <button type="submit" 
+          class="w-full gold-gradient text-slate-950 font-bold py-2.5 rounded-xl text-sm transition shadow-lg hover:opacity-95">
+          Masuk Sekarang
+        </button>
+      </form>
+    </div>
+  </div>
+
   <script>
+    const AUTH_KEY = 'nazar_auth_user';
+    const VALID_USER = 'idrik';
+    const VALID_PASS = 'Belza2021';
+
+    function checkAuthStatus() {
+      const savedUser = localStorage.getItem(AUTH_KEY);
+      const loginModal = document.getElementById('login-modal');
+      const authHeaderBtn = document.getElementById('auth-header-btn');
+
+      if (savedUser === VALID_USER) {
+        loginModal.classList.add('hidden');
+        authHeaderBtn.innerHTML = `
+          <button onclick="handleLogout()" class="bg-red-900/60 hover:bg-red-800 text-red-200 border border-red-700/50 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar (${savedUser})
+          </button>
+        `;
+        return true;
+      } else {
+        loginModal.classList.remove('hidden');
+        authHeaderBtn.innerHTML = `
+          <button onclick="openLoginModal()" class="gold-gradient text-slate-950 px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow hover:opacity-90 flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i> Log In
+          </button>
+        `;
+        return false;
+      }
+    }
+
+    function openLoginModal() {
+      document.getElementById('login-modal').classList.remove('hidden');
+      document.getElementById('login-error').classList.add('hidden');
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const userIn = document.getElementById('login-username').value.trim();
+      const passIn = document.getElementById('login-password').value;
+      const errorEl = document.getElementById('login-error');
+
+      if (userIn === VALID_USER && passIn === VALID_PASS) {
+        localStorage.setItem(AUTH_KEY, VALID_USER);
+        document.getElementById('login-username').value = '';
+        document.getElementById('login-password').value = '';
+        errorEl.classList.add('hidden');
+        checkAuthStatus();
+        render();
+      } else {
+        errorEl.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      if (confirm('Apakah Anda yakin ingin keluar dari aplikasi?')) {
+        localStorage.removeItem(AUTH_KEY);
+        checkAuthStatus();
+      }
+    }
+
     const SHOLAT_KEYS = ['subuh', 'zuhur', 'asar', 'magrib', 'isya'];
     const SHOLAT_NAMES = {
       subuh: { title: 'Setelah Sholat Subuh', icon: 'fa-cloud-sun' },
@@ -238,6 +343,10 @@
     }
 
     window.saveAppData = function() {
+      if (!checkAuthStatus()) {
+        alert('Harap login terlebih dahulu untuk mengubah data!');
+        return;
+      }
       localStorage.setItem('nazar_baqarah_local', JSON.stringify(appData));
       render();
       
@@ -247,6 +356,10 @@
     };
 
     window.handleNumberClick = function(index) {
+      if (!checkAuthStatus()) {
+        alert('Harap login terlebih dahulu!');
+        return;
+      }
       const item = appData[activeTab][index];
       if (!item.done) {
         appData[activeTab][index] = {
@@ -266,6 +379,7 @@
     };
 
     window.addOneToCurrent = function() {
+      if (!checkAuthStatus()) return;
       const list = appData[activeTab];
       const firstUnchecked = list.findIndex(item => !item.done);
       if (firstUnchecked !== -1) {
@@ -280,6 +394,7 @@
     };
 
     window.promptBulkSet = function() {
+      if (!checkAuthStatus()) return;
       const currentCompleted = appData[activeTab].filter(i => i.done).length;
       const input = prompt(`Masukkan jumlah nomor yang SUDAH selesai dibaca untuk Sholat ${activeTab.toUpperCase()} (1 - 120):`, currentCompleted);
       
@@ -304,6 +419,7 @@
     };
 
     window.resetCurrentSholat = function() {
+      if (!checkAuthStatus()) return;
       if (confirm(`Apakah Anda yakin ingin mengosongkan semua catatan untuk waktu ${activeTab.toUpperCase()}?`)) {
         appData[activeTab] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
         window.saveAppData();
@@ -326,6 +442,7 @@
       `;
 
       deleteBtn.onclick = () => {
+        if (!checkAuthStatus()) return;
         appData[activeTab][index] = { done: false, timestamp: null };
         window.saveAppData();
         closeModal();
@@ -349,6 +466,7 @@
     };
 
     window.importData = function() {
+      if (!checkAuthStatus()) return;
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'application/json';
@@ -478,6 +596,9 @@
       renderHeaderAndProgress();
     }
 
+    // Inisialisasi awal
+    checkAuthStatus();
+
     const localSaved = localStorage.getItem('nazar_baqarah_local');
     if (localSaved) {
       try {
@@ -490,7 +611,7 @@
   <!-- Firebase Realtime Database SDKs & Integration -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyA-dDdJloA60ROc47KsIbSd2yhkRpHOv5g",
