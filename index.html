@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracker Hutang Nazar Al-Baqarah</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDKs & Configuration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+      apiKey: "AIzaSyA-dDdJloA60ROc47KsIbSd2yhkRpHOv5g",
+      authDomain: "nazarku.firebaseapp.com",
+      projectId: "nazarku",
+      storageBucket: "nazarku.firebasestorage.app",
+      messagingSenderId: "399713237412",
+      appId: "1:399713237412:web:c049b38ef9fdd0ce98a931",
+      measurementId: "G-N6NQJD526P"
+    };
+
+    // Inisialisasi Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Ekspos ke global scope agar dapat diakses fungsi aplikasi
+    window.db = db;
+    window.docRef = doc(db, "tracker", "nazar_data");
+    window.loadFromFirebase();
+  </script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            islamic: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+              dark: '#0a2e19'
+            },
+            gold: {
+              300: '#fde047',
+              400: '#facc15',
+              500: '#eab308',
+              600: '#ca8a04'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+            quran: ['Amiri', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gold-gradient {
+      background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+    }
+    .bg-pattern {
+      background-color: #0a2e19;
+      background-image: radial-gradient(#15803d 0.75px, transparent 0.75px), radial-gradient(#15803d 0.75px, #0a2e19 0.75px);
+      background-size: 30px 30px;
+      background-position: 0 0, 15px 15px;
+    }
+  </style>
+</head>
+<body class="bg-pattern min-h-screen text-slate-100 font-sans pb-12">
+
+  <!-- Header -->
+  <header class="border-b border-emerald-800/60 bg-islamic-dark/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full gold-gradient p-0.5 flex items-center justify-center shadow-lg">
+          <div class="w-full h-full bg-islamic-900 rounded-full flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-book-quran text-lg"></i>
+          </div>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight text-amber-100">Tracker Nazar Al-Baqarah</h1>
+          <p class="text-xs text-emerald-400">Target 120 Kali per Waktu Sholat</p>
+        </div>
+      </div>
+      <div class="font-quran text-amber-300 text-lg sm:text-right">
+        بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 pt-6 space-y-6">
+
+    <!-- Overall Progress Card -->
+    <div class="bg-emerald-950/80 border border-emerald-700/50 rounded-2xl p-5 shadow-xl backdrop-blur-sm">
+      <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Total Keseluruhan Nazar</span>
+          <div class="flex items-baseline gap-2 mt-1">
+            <span id="grand-total" class="text-4xl font-extrabold text-white">0</span>
+            <span class="text-emerald-300 text-lg">/ 600 kali</span>
+          </div>
+        </div>
+        <div class="text-right flex md:flex-col justify-between items-end border-t md:border-t-0 border-emerald-800/60 pt-3 md:pt-0">
+          <span class="text-xs text-emerald-400">Status Capaian</span>
+          <span id="overall-percent" class="text-2xl font-bold text-amber-300">0%</span>
+        </div>
+      </div>
+      
+      <!-- Main Progress Bar -->
+      <div class="w-full bg-emerald-900/60 rounded-full h-4 p-0.5 border border-emerald-800/80 overflow-hidden">
+        <div id="overall-bar" class="gold-gradient h-full rounded-full transition-all duration-500 w-0"></div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs per Sholat -->
+    <div class="flex flex-wrap gap-2 justify-center sm:justify-start" id="sholat-tabs">
+      <!-- Tabs JS render -->
+    </div>
+
+    <!-- Active Sholat Detail Card -->
+    <div class="bg-emerald-950/90 border border-emerald-700/60 rounded-2xl p-5 sm:p-6 shadow-2xl space-y-6">
+      
+      <!-- Tab Info Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-800/60 pb-4">
+        <div>
+          <h2 id="current-sholat-title" class="text-2xl font-bold text-amber-300 flex items-center gap-2">
+            <!-- Icon & Title -->
+          </h2>
+          <p class="text-xs text-emerald-300 mt-1">Tandai setiap kali Anda selesai membaca 1 kali Al-Baqarah (Otomatis Catat Jam & Tanggal)</p>
+        </div>
+        
+        <!-- Controls -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="addOneToCurrent()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-plus"></i> +1 Selesai Sekarang
+          </button>
+          <button onclick="promptBulkSet()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-list-check"></i> Tandai Banyak
+          </button>
+          <button onclick="resetCurrentSholat()" class="bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-lg text-xs transition">
+            Reset Waktu Ini
+          </button>
+        </div>
+      </div>
+
+      <!-- Individual Tab Progress -->
+      <div>
+        <div class="flex justify-between text-xs font-medium text-emerald-300 mb-1.5">
+          <span>Progres <span id="current-sholat-label">Subuh</span></span>
+          <span id="current-sholat-count">0 / 120 (0%)</span>
+        </div>
+        <div class="w-full bg-emerald-900/80 rounded-full h-3 border border-emerald-800 overflow-hidden">
+          <div id="current-sholat-bar" class="bg-gradient-to-r from-emerald-500 to-amber-400 h-full rounded-full transition-all duration-300 w-0"></div>
+        </div>
+      </div>
+
+      <!-- Grid 1-120 Checkboxes/Buttons -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Daftar Nomor Bacaan (1 - 120)</span>
+          <span class="text-[11px] text-emerald-400/80 italic">Tap nomor untuk melihat/mengubah tanggal</span>
+        </div>
+        <div id="grid-container" class="grid grid-cols-6 sm:grid-cols-10 md:grid-cols-12 gap-1.5 sm:gap-2">
+          <!-- 120 items generated via JS -->
+        </div>
+      </div>
+
+      <!-- History Table for Current Tab -->
+      <div class="border-t border-emerald-800/60 pt-4">
+        <h3 class="text-sm font-semibold text-amber-300 mb-3 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Catatan Waktu (<span id="history-count">0</span>)
+        </h3>
+        <div class="max-h-52 overflow-y-auto rounded-xl border border-emerald-800/60 bg-emerald-900/20 text-xs">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-emerald-900/60 text-emerald-300 sticky top-0 border-b border-emerald-800/60">
+              <tr>
+                <th class="p-2.5">No.</th>
+                <th class="p-2.5">Tanggal & Jam Selesai</th>
+                <th class="p-2.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody" class="divide-y divide-emerald-800/40 text-emerald-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Global Actions / Backup -->
+    <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-emerald-800/40 text-xs text-emerald-400">
+      <div id="sync-status" class="text-amber-400">Menyinkronkan dengan Firebase...</div>
+      <div class="flex gap-2">
+        <button onclick="exportData()" class="hover:text-amber-300 underline">Backup Data (JSON)</button>
+        <span>•</span>
+        <button onclick="importData()" class="hover:text-amber-300 underline">Impor Data</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Detail Jam & Tanggal -->
+  <div id="detail-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-emerald-950 border border-emerald-700/80 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-emerald-800/60 pb-3">
+        <h3 id="modal-title" class="font-bold text-amber-300 text-lg">Detail Bacaan</h3>
+        <button onclick="closeModal()" class="text-emerald-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="modal-content" class="space-y-2 text-sm text-emerald-100">
+        <!-- JS content -->
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="modal-delete-btn" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-3 py-1.5 rounded-lg text-xs font-semibold">
+          Batalkan / Hapus
+        </button>
+        <button onclick="closeModal()" class="bg-emerald-800 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SHOLAT_KEYS = ['subuh', 'zuhur', 'asar', 'magrib', 'isya'];
+    const SHOLAT_NAMES = {
+      subuh: { title: 'Setelah Sholat Subuh', icon: 'fa-cloud-sun' },
+      zuhur: { title: 'Setelah Sholat Zuhur', icon: 'fa-sun' },
+      asar: { title: 'Setelah Sholat Asar', icon: 'fa-sun-plant-wilt' },
+      magrib: { title: 'Setelah Sholat Magrib', icon: 'fa-moon' },
+      isya: { title: 'Setelah Sholat Isya', icon: 'fa-star-and-crescent' }
+    };
+
+    let activeTab = 'subuh';
+    let appData = createEmptyData();
+
+    function getFormattedNow() {
+      const now = new Date();
+      return now.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).replace(/\./g, ':');
+    }
+
+    function createEmptyData() {
+      const data = {};
+      SHOLAT_KEYS.forEach(k => {
+        data[k] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
+      });
+      return data;
+    }
+
+    // Fungsi load data dari Firestore
+    async function loadFromFirebase() {
+      try {
+        const { getDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        const docSnap = await getDoc(window.docRef);
+        if (docSnap.exists()) {
+          appData = docSnap.data();
+        } else {
+          appData = createEmptyData();
+          await saveDataToFirebase();
+        }
+        
+        SHOLAT_KEYS.forEach(key => {
+          if (!appData[key] || !Array.isArray(appData[key]) || appData[key].length !== 120) {
+            appData[key] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
+          }
+        });
+
+        document.getElementById('sync-status').innerText = 'Data tersinkron dengan Firebase';
+        render();
+      } catch (e) {
+        console.error("Gagal memuat data:", e);
+        document.getElementById('sync-status').innerText = 'Gagal sinkronisasi ke Firebase';
+        render();
+      }
+    }
+
+    // Fungsi simpan data ke Firestore
+    async function saveDataToFirebase() {
+      try {
+        const { setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        document.getElementById('sync-status').innerText = 'Menyimpan...';
+        await setDoc(window.docRef, appData);
+        document.getElementById('sync-status').innerText = 'Tersinkron dengan Firebase';
+      } catch (e) {
+        console.error("Gagal menyimpan:", e);
+        document.getElementById('sync-status').innerText = 'Gagal menyimpan ke Firebase';
+      }
+      render();
+    }
+
+    function saveData() {
+      saveDataToFirebase();
+    }
+
+    function handleNumberClick(index) {
+      const item = appData[activeTab][index];
+      if (!item.done) {
+        appData[activeTab][index] = {
+          done: true,
+          timestamp: getFormattedNow()
+        };
+        saveData();
+      } else {
+        openModal(index);
+      }
+    }
+
+    function openModal(index) {
+      const item = appData[activeTab][index];
+      const modal = document.getElementById('detail-modal');
+      const title = document.getElementById('modal-title');
+      const content = document.getElementById('modal-content');
+      const deleteBtn = document.getElementById('modal-delete-btn');
+
+      title.innerText = `Nomor ${index + 1} - ${activeTab.toUpperCase()}`;
+      content.innerHTML = `
+        <div class="bg-emerald-900/50 p-3 rounded-lg border border-emerald-800 space-y-1">
+          <div class="text-xs text-emerald-400">Waktu Penyelesaian:</div>
+          <div class="text-base font-bold text-amber-300"><i class="fa-regular fa-clock mr-1"></i> ${item.timestamp || '-'}</div>
+        </div>
+      `;
+
+      deleteBtn.onclick = () => {
+        appData[activeTab][index] = { done: false, timestamp: null };
+        saveData();
+        closeModal();
+      };
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      render();
+    }
+
+    function addOneToCurrent() {
+      const list = appData[activeTab];
+      const firstUnchecked = list.findIndex(item => !item.done);
+      if (firstUnchecked !== -1) {
+        list[firstUnchecked] = {
+          done: true,
+          timestamp: getFormattedNow()
+        };
+        saveData();
+      } else {
+        alert(`Target 120 kali untuk sholat ${activeTab.toUpperCase()} sudah lengkap!`);
+      }
+    }
+
+    function promptBulkSet() {
+      const currentCompleted = appData[activeTab].filter(i => i.done).length;
+      const input = prompt(`Masukkan jumlah nomor yang SUDAH selesai dibaca untuk Sholat ${activeTab.toUpperCase()} (1 - 120):`, currentCompleted);
+      
+      if (input !== null) {
+        const num = parseInt(input, 10);
+        if (!isNaN(num) && num >= 0 && num <= 120) {
+          const nowStr = getFormattedNow();
+          for (let i = 0; i < 120; i++) {
+            if (i < num) {
+              if (!appData[activeTab][i].done) {
+                appData[activeTab][i] = { done: true, timestamp: nowStr };
+              }
+            } else {
+              appData[activeTab][i] = { done: false, timestamp: null };
+            }
+          }
+          saveData();
+        } else {
+          alert("Harap masukkan angka antara 0 sampai 120.");
+        }
+      }
+    }
+
+    function resetCurrentSholat() {
+      if (confirm(`Apakah Anda yakin ingin mengosongkan semua catatan untuk waktu ${activeTab.toUpperCase()}?`)) {
+        appData[activeTab] = Array.from({ length: 120 }, () => ({ done: false, timestamp: null }));
+        saveData();
+      }
+    }
+
+    function renderTabs() {
+      const container = document.getElementById('sholat-tabs');
+      container.innerHTML = SHOLAT_KEYS.map(key => {
+        const completed = appData[key].filter(i => i.done).length;
+        const isActive = key === activeTab;
+        
+        return `
+          <button onclick="switchTab('${key}')" 
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all ${
+              isActive 
+                ? 'bg-amber-400 text-islamic-dark font-bold shadow-lg scale-105' 
+                : 'bg-emerald-950/70 text-emerald-200 hover:bg-emerald-900 border border-emerald-800/50'
+            }">
+            <i class="fa-solid ${SHOLAT_NAMES[key].icon}"></i>
+            <span class="capitalize">${key}</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-islamic-dark text-amber-300' : 'bg-emerald-900 text-emerald-300'}">
+              ${completed}/120
+            </span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderGrid() {
+      const container = document.getElementById('grid-container');
+      const list = appData[activeTab];
+
+      container.innerHTML = list.map((item, idx) => {
+        const num = idx + 1;
+        return `
+          <button onclick="handleNumberClick(${idx})" title="${item.done ? 'Selesai: ' + item.timestamp : 'Klik untuk tandai'}"
+            class="aspect-square rounded-lg font-bold text-xs flex flex-col items-center justify-center transition-all relative ${
+              item.done 
+                ? 'gold-gradient text-islamic-dark shadow-md ring-2 ring-amber-300/50 scale-95' 
+                : 'bg-emerald-900/40 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-800/50 hover:text-white'
+            }">
+            <span>${num}</span>
+            ${item.done ? '<i class="fa-solid fa-check text-[9px] -mt-0.5"></i>' : ''}
+            ${item.done ? '<span class="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-emerald-900"></span>' : ''}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById('history-tbody');
+      const countLabel = document.getElementById('history-count');
+      const list = appData[activeTab];
+      
+      const doneItems = list
+        .map((item, idx) => ({ ...item, number: idx + 1 }))
+        .filter(item => item.done);
+
+      countLabel.innerText = doneItems.length;
+
+      if (doneItems.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="p-4 text-center text-emerald-400 italic">Belum ada bacaan yang dicatat untuk waktu sholat ini.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = doneItems.map(item => `
+        <tr class="hover:bg-emerald-900/40 transition">
+          <td class="p-2.5 font-bold text-amber-300">Bacaan Ke-${item.number}</td>
+          <td class="p-2.5 text-emerald-100"><i class="fa-regular fa-clock mr-1 text-emerald-400"></i> ${item.timestamp || '-'}</td>
+          <td class="p-2.5 text-right">
+            <button onclick="openModal(${item.number - 1})" class="text-xs text-amber-300 hover:underline">
+              Detail / Hapus
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderHeaderAndProgress() {
+      const currentCompleted = appData[activeTab].filter(i => i.done).length;
+      const currentPercent = Math.round((currentCompleted / 120) * 100);
+
+      document.getElementById('current-sholat-title').innerHTML = `
+        <i class="fa-solid ${SHOLAT_NAMES[activeTab].icon}"></i>
+        ${SHOLAT_NAMES[activeTab].title}
+      `;
+      document.getElementById('current-sholat-label').innerText = activeTab.toUpperCase();
+      document.getElementById('current-sholat-count').innerText = `${currentCompleted} / 120 (${currentPercent}%)`;
+      document.getElementById('current-sholat-bar').style.width = `${currentPercent}%`;
+
+      let grandTotal = 0;
+      SHOLAT_KEYS.forEach(k => {
+        grandTotal += appData[k].filter(i => i.done).length;
+      });
+
+      const overallPercent = Math.round((grandTotal / 600) * 100);
+      document.getElementById('grand-total').innerText = grandTotal;
+      document.getElementById('overall-percent').innerText = `${overallPercent}%`;
+      document.getElementById('overall-bar').style.width = `${overallPercent}%`;
+    }
+
+    function render() {
+      renderTabs();
+      renderGrid();
+      renderHistoryTable();
+      renderHeaderAndProgress();
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `nazar_baqarah_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importData() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.readAsText(file,'UTF-8');
+        reader.onload = readerEvent => {
+          try {
+            const content = JSON.parse(readerEvent.target.result);
+            if (content && typeof content === 'object') {
+              appData = content;
+              saveData();
+              alert('Data berhasil diimpor!');
+            }
+          } catch(err) {
+            alert('File JSON tidak valid.');
+          }
+        }
+      }
+      input.click();
+    }
+  </script>
+</body>
+</html>
